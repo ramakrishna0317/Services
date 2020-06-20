@@ -21,6 +21,29 @@ echo Next, we add the repository:
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" -y
 echo just update the repository information:
 sudo apt update -y
+node{
+   stage('SCM Checkout'){
+       git credentialsId: 'git-creds', url: 'https://github.com/shivastunts0327/Service-java.git'
+   }
+   
+   stage('gradle Package'){
+     def gradleHome = tool name: 'gradle', type: 'gradle'
+     def gradleCMD = "${gradleHome}/bin/gradle"
+     sh "${gradleCMD} clean build"
+   } 
+   
+   stage('installing Docker'){
+   sh label: '', script: '''sudo apt update -y
+sudo apt upgrade -y
+echo Install Prerequisite Packages
+sudo apt-get install curl apt-transport-https ca-certificates software-properties-common -y
+echo Add the Docker Repositories
+echo we add the GPG key, by entering the following command in the command line:
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - 
+echo Next, we add the repository:
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" -y
+echo just update the repository information:
+sudo apt update -y
 echo Install Docker on Ubuntu 18.04
 sudo apt install docker-ce -y'''
    }
@@ -30,11 +53,13 @@ sudo apt install docker-ce -y'''
      '''
      sh label: '', script: '''cat >Dockerfile <<\'EOF\'
      FROM ubuntu
-     COPY ./build/libs/functionhall-service-0.0.1-SNAPSHOT.jar /home/ubuntu/
+     COPY ./build/libs/functionhall-service-0.0.1-SNAPSHOT.jar /opt/
      RUN apt-get update -y
      COPY ./build/libs/vedikaservice.sh /usr/local/bin/
-     COPY  ./build/libs/vedikaservice.service /etc/systemd/system/
-     WORKDIR /home/ubuntu
+	 COPY ./build/libs/vedikaui.sh /usr/local/bin/
+     COPY ./build/libs/angular.sh /opt/
+	 COPY ./build/libs/angser.sh /opt/
+     WORKDIR /opt
      RUN apt install software-properties-common apt-transport-https -y
      RUN add-apt-repository ppa:openjdk-r/ppa -y
      RUN apt install openjdk-8-jdk -y
@@ -49,7 +74,7 @@ sh label: '', script: '''cd /var/lib/jenkins/workspace/Docker.pipeline/build/lib
 cat >vedikaservice.sh <<\'EOF\'
 #!/bin/sh 
 SERVICE_NAME=vedikaservice 
-PATH_TO_JAR=/home/ubuntu/functionhall-service-0.0.1-SNAPSHOT.jar
+PATH_TO_JAR=/opt/functionhall-service-0.0.1-SNAPSHOT.jar
 PID_PATH_NAME=/tmp/vedikaservice-pid 
 case $1 in 
 start)
@@ -90,24 +115,126 @@ restart)
  esac'''
     }
 	
-	stage('Creating vedikaservice.service'){
-sh label: '', script: '''cd /var/lib/jenkins/workspace/Docker.pipeline/build/libs
-cat >vedikaservice.service <<\'EOF\'
-[Unit]
- Description = Java Service
- After network.target = vedikaservice.service
-[Service]
- Type = forking
- Restart=always
- RestartSec=1
- SuccessExitStatus=143 
- ExecStart = /usr/local/bin/vedikaservice.sh start
- ExecStop = /usr/local/bin/vedikaservice.sh stop
- ExecReload = /usr/local/bin/vedikaservice.sh reload
-[Install]
- WantedBy=multi-user.target'''
-   }
-   
+	stage('Creating  supporting file for vedikaui.sh'){
+    sh label: '', script: '''cd /var/lib/jenkins/workspace/Docker.pipeline/build/libs
+    cat >angular.sh <<'EOF'
+    sudo apt -y install curl dirmngr apt-transport-https lsb-release ca-certificates
+    sudo curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
+    echo Install Node.js 12 on Ubuntu / Debian / Linux Mint
+    sudo apt -y install nodejs
+    sudo apt -y  install gcc g++ make
+    echo Confirm Node.js 12 installation by checking the version installed.
+    sudo node --version
+    sudo npm --version 
+    echo Install Angular on Ubuntu 18.04
+    sudo npm install -g @angular/cli@9   
+    cd /home/ubuntu
+    sudo git init
+    sudo git clone https://github.com/shivastunts0327/vedikaUI-angular.git
+    cd vedikaUI-angular
+    sudo npm install
+    ng serve --host 0.0.0.0'''
+	}
+	
+	stage('Creating vedikaui.sh'){
+	sh label: '', script: '''cd /var/lib/jenkins/workspace/Docker.pipeline/build/libs
+	cat >vedikaui.sh <<'EOF'
+#!/bin/sh 
+SERVICE_NAME=vedikaui
+PATH_TO_SH=/opt/angular.sh 
+PID_PATH_NAME=/tmp/vedikaui-pid 
+case $1 in 
+start)
+       echo "Starting $SERVICE_NAME ..."
+  if [ ! -f $PID_PATH_NAME ]; then 
+       nohup sh $PATH_TO_SH /tmp 2>> /dev/null >>/dev/null &      
+                   echo $! > $PID_PATH_NAME  
+       echo "$SERVICE_NAME started ..."         
+  else 
+       echo "$SERVICE_NAME is already running ..."
+  fi
+;;
+stop)
+  if [ -f $PID_PATH_NAME ]; then
+         PID=$(cat $PID_PATH_NAME);
+         echo "$SERVICE_NAME stoping ..." 
+         kill $PID;         
+         echo "$SERVICE_NAME stopped ..." 
+         rm $PID_PATH_NAME       
+  else          
+         echo "$SERVICE_NAME is not running ..."   
+  fi    
+;;    
+restart)  
+  if [ -f $PID_PATH_NAME ]; then 
+      PID=$(cat $PID_PATH_NAME);    
+      echo "$SERVICE_NAME stopping ..."; 
+      kill $PID;           
+      echo "$SERVICE_NAME stopped ...";  
+      rm $PID_PATH_NAME     
+      echo "$SERVICE_NAME starting ..."  
+      nohup sh $PATH_TO_JAR /tmp 2>> /dev/null >> /dev/null &            
+      echo $! > $PID_PATH_NAME  
+      echo "$SERVICE_NAME started ..."    
+  else           
+      echo "$SERVICE_NAME is not running ..."    
+     fi     ;;
+ esac'''
+ }
+    stage('Creating supporting file for vedika.sh'){
+	sh label: '', script: '''cd /var/lib/jenkins/workspace/Docker.pipeline/build/libs
+	cat >vedikaserang.sh <<\'EOF\'
+    #!/bin/sh 
+    service vedikaservice start
+    service vedikaui start'''
+	}
+	
+	stage('Creating vedika.sh'){
+	sh label: '', script: '''cd /var/lib/jenkins/workspace/Docker.pipeline/build/libs
+	cat >vedika.sh <<\'EOF\'
+#!/bin/sh 
+SERVICE_NAME=vedika 
+PATH_TO_SH=/opt/vedikaserang.sh
+PID_PATH_NAME=/tmp/vedika-pid 
+case $1 in 
+start)
+       echo "Starting $SERVICE_NAME ..."
+  if [ ! -f $PID_PATH_NAME ]; then 
+       nohup sh $PATH_TO_SH /tmp 2>> /dev/null >>/dev/null &      
+                   echo $! > $PID_PATH_NAME  
+       echo "$SERVICE_NAME started ..."         
+  else 
+       echo "$SERVICE_NAME is already running ..."
+  fi
+;;
+stop)
+  if [ -f $PID_PATH_NAME ]; then
+         PID=$(cat $PID_PATH_NAME);
+         echo "$SERVICE_NAME stoping ..." 
+         kill $PID;         
+         echo "$SERVICE_NAME stopped ..." 
+         rm $PID_PATH_NAME       
+  else          
+         echo "$SERVICE_NAME is not running ..."   
+  fi    
+;;    
+restart)  
+  if [ -f $PID_PATH_NAME ]; then 
+      PID=$(cat $PID_PATH_NAME);    
+      echo "$SERVICE_NAME stopping ..."; 
+      kill $PID;           
+      echo "$SERVICE_NAME stopped ...";  
+      rm $PID_PATH_NAME     
+      echo "$SERVICE_NAME starting ..."  
+      nohup sh $PATH_TO_SH /tmp 2>> /dev/null >> /dev/null &            
+      echo $! > $PID_PATH_NAME  
+      echo "$SERVICE_NAME started ..."    
+  else           
+      echo "$SERVICE_NAME is not running ..."    
+     fi     ;;
+ esac'''
+ }
+	
    stage('ansible installing'){
    sh label: '', script: '''#!/bin/bash
    echo this script done by shiva
@@ -155,11 +282,11 @@ sudo apt install docker-ce -y'''
    }
    
    stage('Creating Image'){
-   sh label: '', script: 'sudo docker build -t vedikaservice .'
+   sh label: '', script: 'sudo docker build -t vedika .'
    }
    
    stage('converting Image'){
-   sh label: '', script: 'sudo docker save -o /home/ubuntu/vedikaservice.tar vedikaservice'
+   sh label: '', script: 'sudo docker save -o /home/ubuntu/vedika.tar vedika'
    }
   
    stage('permissions ansible dir'){
@@ -182,7 +309,7 @@ sudo echo "---
   tasks:
     -
       copy:
-        src:  /home/ubuntu/vedikaservice.tar
+        src:  /home/ubuntu/vedika.tar
         dest: /home/ubuntu/
     -
       copy:
@@ -193,16 +320,17 @@ sudo echo "---
     -
        shell: sudo sh /home/ubuntu/docker.sh
     -
-       shell: sudo docker load -i /home/ubuntu/vedikaservice.tar
+       shell: sudo docker load -i /home/ubuntu/vedika.tar
     -
-       shell: sudo docker run -i -t -d -p 8020:8057 --name vedikaservice.container vedikaservice //bin/bash
+       shell: sudo docker run -i -t -d -p 8020:8057 --name vedikacontainer vedika //bin/bash
     -
-       shell: sudo docker exec vedikaservice.container sh /usr/local/bin/vedikaservice.sh  start" > vedikaservice.yaml'''
+       shell: sudo docker exec vedikacontainer sh /usr/local/bin/vedika.sh  start" > vedika.yaml'''
   }
       
       stage('execution playbook'){
        sh label: '', script: '''cd /opt/
-       sudo ansible-playbook vedikaservice.yaml'''
+       sudo ansible-playbook vedika.yaml'''
        }
 }       
+      
 
