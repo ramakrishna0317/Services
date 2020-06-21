@@ -162,7 +162,7 @@ restart)
  }
     stage('Creating supporting file for vedika.sh'){
 	sh label: '', script: '''cd /var/lib/jenkins/workspace/Docker.pipeline/build/libs
-	cat >vedikaserang.sh <<\'EOF\'
+	cat >vedikaangser.sh <<\'EOF\'
         #!/bin/sh 
        sh /usr/local/bin/vedikaservice start
        sh /usr/local/bin/vedikaui start'''
