@@ -281,7 +281,7 @@ sudo apt install docker-ce -y'''
    stage('adding ansible hosts'){
    sh label: '', script: '''cd /etc/ansible
    cat >hosts <<\'EOF\'
-   13.232.83.39'''
+    13.234.238.236 '''
    }
    
    stage('creating playbook'){
