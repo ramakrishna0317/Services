@@ -43,6 +43,8 @@ sudo apt install docker-ce -y'''
      RUN chmod +x /usr/local/bin/vedikaservice.sh
      RUN chmod +x /usr/local/bin/vedikaui.sh
      RUN chmod +x /usr/local/bin/vedika.sh
+     RUN chmod +x /opt/angular.sh
+     RUN chmod +x /opt/angser.sh
      RUN apt-get install systemd ''
      EXPOSE 8057
      '''
@@ -173,7 +175,7 @@ restart)
 	cat >vedika.sh <<\'EOF\'
 #!/bin/sh 
 SERVICE_NAME=vedika 
-PATH_TO_SH=/opt/vedikaserang.sh
+PATH_TO_SH=/opt/vedikaangser.sh
 PID_PATH_NAME=/tmp/vedika-pid 
 case $1 in 
 start)
