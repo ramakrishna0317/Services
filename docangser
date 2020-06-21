@@ -269,20 +269,18 @@ sudo apt install docker-ce -y'''
    }
   
    stage('permissions ansible dir'){
-   sh label: '', script: '''sudo chmod 777 /etc/ansible/
-   '''
+   sh label: '', script: '''sudo chmod 777 /etc/ansible/'''
    }
    
    stage('adding ansible hosts'){
    sh label: '', script: '''cd /etc/ansible
-   mv /hosts /home/ubuntu 
+   mv /hosts /home/ubuntu'''
    }
    
    stage('adding ansible hosts'){
    sh label: '', script: '''cd /etc/ansible
    cat >hosts <<\'EOF\'
-   13.232.83.39
-   '''
+   13.232.83.39'''
    }
    
    stage('creating playbook'){
