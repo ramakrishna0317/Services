@@ -276,7 +276,7 @@ sudo apt install docker-ce -y'''
    
    stage('adding ansible hosts'){
    sh label: '', script: '''cd /etc/ansible
-   mv /hosts /home/ubuntu'''
+   mv hosts /home/ubuntu'''
    }
    
    stage('adding ansible hosts'){
