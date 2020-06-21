@@ -11,8 +11,7 @@ node{
    
    stage('installing Docker'){
    sh label: '', script: '''sudo apt update -y
-sudo apt upgrade -y
-echo Install Prerequisite Packages
+ echo Install Prerequisite Packages
 sudo apt-get install curl apt-transport-https ca-certificates software-properties-common -y
 echo Add the Docker Repositories
 echo we add the GPG key, by entering the following command in the command line:
